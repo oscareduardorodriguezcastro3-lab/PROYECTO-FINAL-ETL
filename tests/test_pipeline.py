@@ -9,9 +9,9 @@ import unittest
 
 import pandas as pd
 
-from etl_medallon.common import municipality
-from etl_medallon.gold import integrate, unify
-from etl_medallon.silver import Audit, crc, icfes
+from src.transform.common import municipality
+from src.load.gold import integrate, unify
+from src.transform.silver import Audit, crc, icfes
 
 
 class PipelineTests(unittest.TestCase):

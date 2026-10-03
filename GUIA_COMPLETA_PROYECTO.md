@@ -16,7 +16,7 @@ referencia; las cifras se reconstruyeron desde las fuentes originales disponible
 La carpeta principal en el equipo de Oscar es:
 
 ```text
-/Users/oscar/Documents/ChatGPT/ETL
+/ETL
 ```
 
 ## 2. Fuentes encontradas
@@ -173,7 +173,11 @@ ETL/
 ├── config/
 │   ├── ejemplo.json
 │   └── local.json                    # Solo en tu equipo
-├── etl_medallon/
+├── src/
+│   ├── extract/
+│   ├── transform/
+│   ├── load/
+│   └── analysis/
 │   ├── __init__.py                    # API y versión
 │   ├── __main__.py                    # Coordinación del proceso
 │   ├── bronze.py                      # Copias y manifiesto
@@ -206,7 +210,7 @@ terminada correctamente. Un fallo no reemplaza ese puntero.
 Se requiere Python 3.10 o posterior. Ejecuta estos comandos en Terminal:
 
 ```bash
-cd /Users/oscar/Documents/ChatGPT/ETL
+cd /ETL
 python3 --version
 python3 -m venv .venv
 source .venv/bin/activate
@@ -241,7 +245,7 @@ desde la carpeta de ejecución del comando; usa la raíz del proyecto.
 ### Paso 3. Inventario y pruebas
 
 ```bash
-python -m etl_medallon --config config/local.json --inventory
+python main.py
 python -m unittest discover -s tests -v
 ```
 
@@ -255,7 +259,7 @@ La consola muestra el avance y el tamaño de los DataFrames. Como alternativa,
 puedes ejecutar el coordinador directamente:
 
 ```bash
-python -m etl_medallon --config config/local.json
+python main.py
 ```
 
 Ambos reconstruyen el ETL; no necesitas ejecutar los dos. Reutilizan las copias
@@ -276,7 +280,7 @@ Ejecuta el siguiente código dentro de Python, un archivo `.py` o el cuaderno,
 desde la carpeta del proyecto:
 
 ```python
-from etl_medallon import cargar_dataframes
+from src.dataframes import cargar_dataframes
 
 datos = cargar_dataframes()
 df_icfes = datos["df_icfes"]
@@ -296,7 +300,7 @@ print(sin_coincidencia.head())
 Para reconstruir y obtener las tablas en una sola llamada:
 
 ```python
-from etl_medallon import ejecutar_etl
+from src.dataframes import ejecutar_etl
 
 datos = ejecutar_etl()
 df_final = datos["df_final"]
@@ -337,7 +341,7 @@ python -m pip install -r requirements.txt
 Luego, desde Python:
 
 ```python
-from etl_medallon import cargar_dataframes
+from src.dataframes import cargar_dataframes
 
 datos = cargar_dataframes(run_dir="resultados")
 df_unificado = datos["df_unificado"]
@@ -370,11 +374,11 @@ pues ya tienes archivos locales. Este procedimiento sigue la
 Reemplaza los valores de ejemplo por los tuyos:
 
 ```bash
-cd /Users/oscar/Documents/ChatGPT/ETL
+cd /ETL
 git config user.name "TU NOMBRE"
 git config user.email "TU CORREO DE GITHUB"
 git status
-git add .gitignore README.md GUIA_COMPLETA_PROYECTO.md requirements.txt ejecutar_proyecto.py proyecto_medallon.ipynb config/ejemplo.json etl_medallon docs tests
+git add .gitignore README.md GUIA_COMPLETA_PROYECTO.md requirements.txt ejecutar_proyecto.py proyecto_medallon.ipynb config/ejemplo.json src docs tests
 git diff --cached --stat
 git commit -m "Proyecto ETL Medallon con ICFES, CRC y DANE"
 ```
@@ -406,7 +410,7 @@ Después de modificar y probar el código:
 
 ```bash
 git status
-git add etl_medallon docs tests README.md GUIA_COMPLETA_PROYECTO.md
+git add src docs tests README.md GUIA_COMPLETA_PROYECTO.md
 git diff --cached --stat
 git commit -m "Actualiza transformaciones y documentacion"
 git push

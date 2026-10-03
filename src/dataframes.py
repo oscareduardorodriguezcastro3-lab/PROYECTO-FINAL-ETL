@@ -72,11 +72,12 @@ def ejecutar_etl(config_path=None) -> dict[str, pd.DataFrame]:
     y no devuelve silenciosamente resultados anteriores. Las rutas relativas de
     configuración se interpretan desde la raíz del proyecto.
     """
-    config = Path(config_path) if config_path is not None else PROJECT / "config/local.json"
+    config = Path(config_path) if config_path is not None else PROJECT / "config/config.yaml"
     if not config.is_absolute():
         config = PROJECT / config
-    settings = json.loads(config.read_text(encoding="utf-8"))
-    subprocess.run([sys.executable, "-m", "etl_medallon", "--config", str(config)],
+    from .pipeline import cargar_configuracion
+    settings = cargar_configuracion(config)
+    subprocess.run([sys.executable, "-m", "src.cli", "--config", str(config)],
                    cwd=PROJECT, check=True)
     output = Path(settings["output_dir"]).expanduser()
     if not output.is_absolute():

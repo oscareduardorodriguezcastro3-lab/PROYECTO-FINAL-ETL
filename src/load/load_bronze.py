@@ -4,18 +4,31 @@ import logging
 import shutil
 from pathlib import Path
 
-from .common import sha256, save_json
+from ..transform.common import sha256, save_json
 
 
 def discover(source: Path) -> dict[str, list[Path]]:
-    """Selecciona fuentes originales. df_final.csv es referencia, no entrada."""
+    """Selecciona fuentes originales o el snapshot Bronze conservado.
+
+    ``source`` es la ubicación preferida. Si ``data/raw`` está vacía, se usa
+    únicamente el snapshot ya gobernado en ``data/bronze`` para permitir una
+    reconstrucción local reproducible sin inventar fuentes.
+    """
     files = {
         "icfes": sorted((source / "Datos ICFES").glob("Examen_Saber_11_*.txt")),
         "crc": sorted(source.glob("ACCESOS_INTERNET*.csv")),
         "dane": sorted(source.glob("anexo-proyecciones*.xlsx")),
     }
     if not files["icfes"] or len(files["crc"]) != 1 or len(files["dane"]) != 1:
-        raise ValueError("Se requieren TXT ICFES, un CSV de accesos y un XLSX DANE.")
+        snapshot = source.parent / "bronze" if source.name == "raw" else None
+        if snapshot and snapshot.exists():
+            files = {
+                "icfes": sorted(snapshot.joinpath("icfes").glob("*/*.txt")),
+                "crc": sorted(snapshot.joinpath("crc").glob("*/*.csv")),
+                "dane": sorted(snapshot.joinpath("dane").glob("*/*.xlsx")),
+            }
+    if not files["icfes"] or len(files["crc"]) != 1 or len(files["dane"]) != 1:
+        raise ValueError("Se requieren TXT ICFES, un CSV CRC y un XLSX DANE en source_dir o en el snapshot Bronze.")
     return files
 
 

@@ -2,7 +2,7 @@
 
 import argparse
 
-from etl_medallon import cargar_dataframes, ejecutar_etl
+from src.dataframes import cargar_dataframes, ejecutar_etl
 
 
 def main():

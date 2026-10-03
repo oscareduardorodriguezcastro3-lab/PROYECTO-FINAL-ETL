@@ -1,5 +1,16 @@
 # ETL en Python con arquitectura Medallón
 
+
+```text
+TXT ICFES ─┐
+CSV CRC   ─┼─> Bronze ─> Silver ─> Gold ─> Reporting
+XLSX DANE ─┘
+```
+
+RAW es lógico: corresponde a `source_dir`, externo al repositorio. La primera
+capa física gobernada es Bronze, con copias verificadas por SHA-256, tamaño,
+origen, destino y `manifest.json`.
+
 Proyecto educativo y ejecutable para integrar **Saber 11 (ICFES), accesos
 residenciales a Internet fijo (CRC) y proyecciones de hogares (DANE)**.
 La unidad final de análisis es **municipio del colegio y año**.
@@ -15,7 +26,7 @@ python ejecutar_proyecto.py
 Para cargar los resultados ya generados sin volver a procesar los originales:
 
 ```python
-from etl_medallon import cargar_dataframes
+from src.dataframes import cargar_dataframes
 
 datos = cargar_dataframes()
 df_icfes = datos["df_icfes"]
@@ -25,7 +36,7 @@ df_unificado = datos["df_unificado"]  # Unión externa; conserva ausencias.
 df_final = datos["df_final"]          # Coincidencias de las tres fuentes.
 ```
 
-Para reconstruir todo desde Python: `from etl_medallon import ejecutar_etl`,
+Para reconstruir todo desde Python: `from src.dataframes import ejecutar_etl`,
 seguido de `datos = ejecutar_etl()`. Los códigos se cargan como texto, los
 conteos como enteros que admiten nulos y las señales como booleanos.
 
@@ -45,15 +56,30 @@ de trazabilidad; no mezcla en una misma tabla registros de estudiantes y conexio
 
 La entrega ZIP incluye código, guía, cuaderno y resultados en `resultados/`.
 Después de descomprimirla puedes usar `cargar_dataframes(run_dir="resultados")`.
-Los originales Bronze (aproximadamente 1,8 GB) permanecen en la carpeta local
-`data/bronze`; no se duplican dentro del ZIP. Para reconstruir desde otro equipo,
-necesitas los originales y ajustar `config/local.json` a partir del ejemplo.
+Los originales Bronze (aproximadamente 1,8 GB) permanecen fuera del repositorio.
+Para reconstruir desde otro equipo, configura `fuentes.source_dir` en
+`config/config.yaml` o usa la variable `ETL_SOURCE_DIR`.
 
 Empieza por [la guía paso a paso](docs/01_paso_a_paso.md). Las reglas y campos
 están en [el diccionario](docs/02_diccionario_y_reglas.md).
 Consulta también [los resultados verificados con tus fuentes](docs/03_resultados_verificados.md).
 
 ## 1. Qué significa Medallón
+
+## Etapas ETL
+
+```text
+src/
+├── extract/   # lectura y localización de fuentes
+├── transform/ # reglas de limpieza y Silver
+├── load/      # persistencia Bronze/Silver/Gold e integración
+└── analysis/  # EDA, calidad, negocio y gráficos
+```
+
+EXTRACT obtiene las fuentes; TRANSFORM valida y construye Silver; LOAD conserva
+evidencia y produce Gold; ANALYSIS documenta resultados. Esta separación no
+duplica la arquitectura Medallion: RAW, Bronze, Silver y Gold siguen siendo
+capas de datos, mientras `src/` organiza responsabilidades del código.
 
 | Capa | Qué hacemos | Producto |
 | --- | --- | --- |
@@ -81,21 +107,21 @@ de calidad. No exige una herramienta particular.
 Requiere Python 3.10 o posterior. Abre una terminal en la carpeta del proyecto:
 
 ```bash
-cd /Users/oscar/Documents/ChatGPT/ETL
+cd /ETL
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-Las versiones de las dos dependencias están fijadas a las usadas para verificar
+Las versiones de las dependencias están fijadas en `requirements.txt`.
 este proyecto. En Windows, activa el entorno con `.venv\Scripts\activate`.
 
 ## 3. Configurar las fuentes
 
-En este equipo ya está preparado `config/local.json`, que apunta a
-`/Users/oscar/Desktop/ETL/Trabajo Final/Archivos-Datos`.
-Para otro equipo, copia `config/ejemplo.json` a `config/local.json` y cambia
-`source_dir`. `output_dir` es relativo a la carpeta desde la que ejecutas Python.
+La fuente principal de configuración es `config/config.yaml`. Define proyecto,
+fuentes, años, chunksize, rutas y scheduler sin credenciales. Define
+`fuentes.source_dir` o usa `ETL_SOURCE_DIR` como override local. `config/local.json`
+se conserva solo como fallback temporal compatible y está ignorado por Git.
 
 ```text
 Archivos-Datos/
@@ -112,9 +138,9 @@ columnas y la estructura del Excel se validan según los archivos entregados.
 ## 4. Revisar y ejecutar
 
 ```bash
-python -m etl_medallon --config config/local.json --inventory
+python main.py
 python -m unittest discover -s tests -v
-python -m etl_medallon --config config/local.json
+python main.py
 ```
 
 La primera ejecución copia aproximadamente 1,8 GB a Bronze. Las siguientes
@@ -124,6 +150,16 @@ es de reconstrucción completa, no de actualización incremental de registros.
 ## 5. Encontrar los resultados
 
 `data/latest.json` indica la última ejecución terminada correctamente.
+
+La persistencia tiene dos niveles:
+
+- `data/runs/<run_id>/`: histórico versionado e inmutable de cada ejecución.
+- `data/silver/`: última publicación Silver exitosa, lista para reutilización.
+- `data/gold/`: última publicación Gold exitosa, lista para consumo.
+
+El pipeline copia los artefactos sin moverlos. Si una ejecución falla, conserva
+el histórico fallido para diagnóstico, pero no reemplaza `data/silver/`,
+`data/gold/` ni `data/latest.json`.
 
 ```text
 data/
@@ -145,11 +181,29 @@ data/
       balance_fuentes.csv
       cobertura_cruces.csv
       rechazos.csv  (solo si hay rechazos)
+  silver/          (última versión publicada)
+    icfes_municipio_periodo.csv
+    crc_municipio_trimestre.csv
+    dane_municipio_anio.csv
+  gold/            (última versión publicada)
+    df_unificado.csv
+    panel_municipio_anio.csv
+    resumen_anual.csv
 ```
+
+`latest.json` contiene `run_id`, `status`, `fecha`, `silver_path`, `gold_path`
+y `historical_run_path`.
 
 Cada ejecución tiene una carpeta nueva. Una ejecución fallida queda registrada
 y no reemplaza el puntero a la última ejecución correcta. Las salidas parciales
 de una ejecución fallida no deben usarse para análisis.
+
+Los rechazos están en `outputs/quality/rechazos_por_motivo.csv` y las filas
+fuera de alcance en `outputs/quality/filas_fuera_alcance.csv`; no se mezclan.
+La integración está en `outputs/audit/integracion_gold.csv` y los gráficos en
+`outputs/eda/graficos/`. 2025 es parcial porque falta ICFES 20252. El proyecto
+no demuestra causalidad; los nulos entre fuentes pueden representar ausencia de
+cobertura, no cero.
 
 ## 6. Decisiones que debes conocer
 
@@ -169,11 +223,12 @@ de una ejecución fallida no deben usarse para análisis.
 
 ## 7. Archivos para aprender el código
 
-1. `etl_medallon/__main__.py`: configuración y orden de ejecución.
-2. `etl_medallon/bronze.py`: descubrimiento, copia y huellas de integridad.
-3. `etl_medallon/silver.py`: lectura por bloques y reglas por fuente.
-4. `etl_medallon/gold.py`: promedios, cruces e indicadores.
-5. `etl_medallon/common.py`: utilidades compartidas.
+1. `src/pipeline.py`: configuración y orquestación.
+2. `src/extract/`: localización de fuentes.
+3. `src/load/load_bronze.py`: copias y huellas de integridad.
+4. `src/transform/silver.py`: lectura por bloques y reglas por fuente.
+5. `src/load/gold.py`: promedios, cruces e indicadores.
+6. `src/analysis/reporting.py`: reportes y gráficos.
 6. `tests/test_pipeline.py`: ejemplos pequeños con resultados calculables a mano.
 
 Los comentarios y docstrings están en español. Los originales y resultados de

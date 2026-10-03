@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from .common import unique, write_csv
+from ..transform.common import unique, write_csv
 
 KEYS = ["codigo_municipio", "anio"]
 

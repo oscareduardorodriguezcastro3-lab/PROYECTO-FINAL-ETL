@@ -1,0 +1,18 @@
+proyecto:
+  nombre: "ETL Medallón Educación y Conectividad Colombia"
+  autores: ["Oscar Eduardo Rodríguez Castro -valentina - karina - mov"]
+  version: "1.1.0"
+fuentes:
+  source_dir: "data/raw"
+etl:
+  years: [2022, 2023, 2024, 2025]
+  chunksize: 50000
+  clave_integracion: "codigo_municipio + anio"
+rutas:
+  bronze: "data/bronze"
+  runs: "data/runs"
+  outputs: "outputs"
+  logs: "logs"
+scheduler:
+  enabled: false
+  hora: "02:00"

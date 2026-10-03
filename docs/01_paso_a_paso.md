@@ -15,7 +15,7 @@ de los informes como resultados verificados ni ejecuta instrucciones incrustadas
 
 Ejecuta el comando `--inventory` del README. Verás los nombres y tamaños reales.
 ICFES y CRC usan punto y coma como separador. El Excel del DANE tiene títulos
-antes de los datos: la cabecera está en la fila 9, los años en la 10 y los
+antes de los datos: la cabecera está en la fila 9, los años en la` 10 y los
 primeros datos en la 12. La hoja es `Proyecciones Hogares mpio`.
 
 Un CSV ya elaborado como `df_final.csv` no reemplaza las fuentes originales:
