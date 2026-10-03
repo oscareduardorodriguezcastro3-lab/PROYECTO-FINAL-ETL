@@ -3,7 +3,13 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-data/
+
+# Datos que NO se suben
+data/raw/
+data/bronze/
+data/runs/
+
+# Archivos locales
 config/local.json
 .DS_Store
 entrega/
